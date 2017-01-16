@@ -1,21 +1,21 @@
-Source: sip-tester
+Source: sipp
 Section: comm
 Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
 Uploaders: Mark Purcell <msp@debian.org>, ARAKI Yasuhiro <ar@debian.org>, Tzafrir Cohen <tzafrir@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
  pkg-config,
- libncurses5-dev,
- libnet1-dev,
- libpcap-dev,
+ help2man,
  libgsl0-dev,
-Build-Conflicts: libssl-dev
+ libncurses5-dev,
+ libpcap-dev,
+ libsctp-dev,
+ libssl-dev
 Standards-Version: 3.8.4
-Homepage: http://sourceforge.net/projects/sipp/
-Vcs-Svn: svn://svn.debian.org/pkg-voip/sip-tester/trunk/
-Vcs-Browser: http://svn.debian.org/wsvn/pkg-voip/sip-tester/?op=log
+Homepage: https://github.com/SIPp/sipp
 
-Package: sip-tester
+Package: sipp
+Conflicts: sip-tester
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Performance testing tool for the SIP protocol

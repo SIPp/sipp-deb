@@ -1,6 +1,9 @@
-sip-tester for Debian
------------------
+Building SIPp on Ubuntu/Precise
+===============================
 
-Binary name is "sipp". Not sip-tester.
+Build the package without dpkg-source complaining about the .git
+directory here::
 
- -- ARAKI Yasuhiro <ar@debian.org>, Wed, 09 Mar 2005 18:46:43 +0900
+    ( tmpdst=/tmp/deb-$(stat -c%i .);
+      mv debian/.git $tmpdst && dpkg-buildpackage -us -uc -sa;
+      ret=$?; mv $tmpdst debian/.git; exit $ret )

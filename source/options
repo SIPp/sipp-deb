@@ -1,0 +1,2 @@
+#tar-ignore = "googletest/*"
+extend-diff-ignore = "^googletest/|^gmock$|^gtest$|^config.log$|^regress/.*\.log$"

@@ -18,14 +18,24 @@ ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
 else
         BUILDFLAGS += OPTIMIZE=-O2
 endif
-BUILDFLAGS += MAKECMDGOALS=dont-optimize
-
-help2man:
-	/usr/bin/help2man -v '-v' -N -S 'Debian GNU/Linux' -o debian/sipp.1 sipp \
-		-n 'Session Initiation Protol (SIP) performance testing tool'
+#BUILDFLAGS += MAKECMDGOALS=dont-optimize
 
 %:
 	dh $@
 
-override_dh_auto_build:
-	        dh_auto_build -- pcapplay
+override_dh_auto_configure:
+	dh_auto_configure -- \
+	        --with-gsl \
+        	--with-openssl \
+	        --with-pcap \
+        	--with-rtpstream \
+	        --with-sctp
+
+override_dh_auto_test:
+	git clone https://github.com/google/googletest/ || ( cd googletest/; git pull --rebase )
+	test -d gtest && rmdir gtest
+	test -h gtest || ln -s googletest/googletest gtest
+	test -d gmock && rmdir gmock
+	test -h gmock || ln -s googletest/googlemock gmock
+	dh_auto_test
+	./regress/runtests
