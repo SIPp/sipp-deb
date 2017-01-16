@@ -1,0 +1,107 @@
+--- a/local.mk
++++ b/local.mk
+@@ -2,3 +2,7 @@
+ #  EXTRACPPFLAGS=-DHAVE_GSL -I`if test -f /usr/local/lib/libgsl.so; then echo /usr/local; else echo ./ext; fi;`/include
+ #  EXTRACFLAGS=-DHAVE_GSL -I`if test -f /usr/local/lib/libgsl.so; then echo /usr/local; else echo ./ext; fi;`/include
+ #  EXTRALIBS=-L`if test -f /usr/local/lib/libgsl.so; then echo /usr/local; else echo ./ext; fi;`/lib -lgsl -lgslcblas
++EXTRACPPFLAGS=-DHAVE_GSL `pkg-config --include gsl`
++EXTRACFLAGS=-DHAVE_GSL `pkg-config --include gsl`
++EXTRALIBS=`pkg-config --libs gsl`
++
+--- a/scenario.cpp
++++ b/scenario.cpp
+@@ -29,11 +29,9 @@
+ 
+ #include <stdlib.h>
+ #include "sipp.hpp"
+-#ifdef HAVE_GSL
+ #include <gsl/gsl_rng.h>
+ #include <gsl/gsl_randist.h>
+ #include <gsl/gsl_cdf.h>
+-#endif
+ 
+ /************************ Class Constructor *************************/
+ 
+@@ -1115,7 +1113,6 @@ CSample *parse_distribution(bool oldstyl
+     double min = xp_get_double("min", "Uniform distribution");
+     double max = xp_get_double("max", "Uniform distribution");
+     distribution = new CUniform(min, max);
+-#ifdef HAVE_GSL
+   } else if (!strcmp(distname, "normal")) {
+     double mean = xp_get_double("mean", "Normal distribution");
+     double stdev = xp_get_double("stdev", "Normal distribution");
+@@ -1148,16 +1145,6 @@ CSample *parse_distribution(bool oldstyl
+     double n = xp_get_double("n", "Negative Binomial distribution");
+     double p = xp_get_double("p", "Negative Binomial distribution");
+     distribution = new CNegBin(n, p);
+-#else
+-  } else if (!strcmp(distname, "normal")
+-      || !strcmp(distname, "lognormal")
+-      || !strcmp(distname, "exponential")
+-      || !strcmp(distname, "pareto")
+-      || !strcmp(distname, "gamma")
+-      || !strcmp(distname, "negbin")
+-      || !strcmp(distname, "weibull")) {
+-    ERROR("The distribution '%s' is only available with GSL.", distname);
+-#endif
+   } else {
+     ERROR("Unknown distribution: %s\n", ptr);
+   }
+--- a/stat.cpp
++++ b/stat.cpp
+@@ -30,11 +30,9 @@
+ #include "sipp.hpp"
+ #include "scenario.hpp"
+ #include "screen.hpp"
+-#ifdef HAVE_GSL
+ #include <gsl/gsl_rng.h>
+ #include <gsl/gsl_randist.h>
+ #include <gsl/gsl_cdf.h>
+-#endif
+ 
+ /*
+ ** Local definitions (macros)
+@@ -1862,7 +1860,6 @@ double CUniform::cdfInv(double percentil
+   return min + (max * percentile);
+ }
+ 
+-#ifdef HAVE_GSL
+ gsl_rng *gsl_init() {
+   static gsl_rng *rng = NULL;
+ 
+@@ -2101,6 +2098,5 @@ int CNegBin::timeDescr(char *s, int len)
+ double CNegBin::cdfInv(double percentile) {
+   return 0;
+ }
+-#endif
+ 
+ 
+--- a/stat.hpp
++++ b/stat.hpp
+@@ -38,11 +38,9 @@
+ #include <fstream>
+ #include <stdio.h>
+ 
+-#ifdef HAVE_GSL
+ #include <gsl/gsl_rng.h>
+ #include <gsl/gsl_randist.h>
+ #include <gsl/gsl_cdf.h>
+-#endif
+ 
+ #include "variables.hpp"
+ 
+@@ -629,7 +627,6 @@ private:
+ 	double min, max;
+ };
+ 
+-#ifdef HAVE_GSL
+ /* Normal distribution. */
+ class CNormal : public CSample {
+ public:
+@@ -731,6 +728,5 @@ protected:
+ 	double p, n;
+ 	gsl_rng *rng;
+ };
+-#endif
+ 
+ #endif // __STAT_H__

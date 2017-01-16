@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
+
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
+  confflags += --build $(DEB_HOST_GNU_TYPE)
+else
+  confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+endif
+
+export PROC := $(shell dpkg-architecture -qDEB_BUILD_GNU_CPU)
+
+ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
+        BUILDFLAGS += OPTIMIZE=-O0
+else
+        BUILDFLAGS += OPTIMIZE=-O2
+endif
+BUILDFLAGS += MAKECMDGOALS=dont-optimize
+
+help2man:
+	/usr/bin/help2man -v '-v' -N -S 'Debian GNU/Linux' -o debian/sipp.1 sipp \
+		-n 'Session Initiation Protol (SIP) performance testing tool'
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	        dh_auto_build -- pcapplay

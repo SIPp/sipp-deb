@@ -1,0 +1,43 @@
+Source: sip-tester
+Section: comm
+Priority: optional
+Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
+Uploaders: Mark Purcell <msp@debian.org>, ARAKI Yasuhiro <ar@debian.org>, Tzafrir Cohen <tzafrir@debian.org>
+Build-Depends: debhelper (>= 7.0.50~),
+ pkg-config,
+ libncurses5-dev,
+ libnet1-dev,
+ libpcap-dev,
+ libgsl0-dev,
+Build-Conflicts: libssl-dev
+Standards-Version: 3.8.4
+Homepage: http://sourceforge.net/projects/sipp/
+Vcs-Svn: svn://svn.debian.org/pkg-voip/sip-tester/trunk/
+Vcs-Browser: http://svn.debian.org/wsvn/pkg-voip/sip-tester/?op=log
+
+Package: sip-tester
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Performance testing tool for the SIP protocol
+ sip-tester is a test tool and traffic generator for the SIP
+ protocol. It can be used to test SIP equipment like SIP
+ proxies, SIP media servers, etc. and to emulate user agents
+ calling a SIP system. 
+ .
+ Its features are:
+  * a few basic SipStone user agent scenarios included
+  * custom XML scenario files even for complex call flows
+  * comprehensive set of real-time statistics
+  * TCP and UDP transport
+  * dynamically adjustable call rates
+  - send RTP traffic
+ .
+ This software is distributed as SIPp by its authors.
+ .
+ SIP is the Session Initiation Protocol, a standard signalling
+ protocol for initiating, modifying, and terminating Internet
+ conferencing, telephony (VoIP - Voice over IP), video, and
+ instant messaging.
+ .
+ This package has been built for distributed pauses with the
+ GNU Scientific Libraries.
