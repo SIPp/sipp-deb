@@ -1,6 +1,17 @@
+sipp (3.5.1-0osso1~ubu12.04) precise; urgency=low
+
+  * Rename 'precise' build to 'ubu12.04' so it can get upgraded properly on
+    release-upgrades.
+
+ -- Walter Doekes <wjdoekes+sipp@osso.nl>  Tue, 17 Jan 2017 09:20:58 +0100
+
 sipp (3.5.1-0osso0~precise) precise; urgency=low
 
   * New initial version for precise.
+  * Took debian files from precise-3.2-1 version.
+  * Renamed from 'sip-tester' to 'sipp'.
+  * Enabled all possible build options (pcap, gsl, ssl, sctp, rtpstream).
+  * Auto-run regression tests during build.
 
  -- Walter Doekes <wjdoekes+sipp@osso.nl>  Mon, 16 Jan 2017 15:47:31 +0100
 
