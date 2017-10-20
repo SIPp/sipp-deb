@@ -1,3 +1,12 @@
+sipp (3.5.1-0osso2+deb8u9) jessie; urgency=low
+
+  * Build for debian/jessie 8.9.
+  * Enable parallel builds.
+  * Update documentation.
+  * Fix/improve tests.
+
+ -- Walter Doekes <wjdoekes+sipp@osso.nl>  Fri, 20 Oct 2017 13:03:07 +0200
+
 sipp (3.5.1-0osso1~ubu12.04) precise; urgency=low
 
   * Rename 'precise' build to 'ubu12.04' so it can get upgraded properly on

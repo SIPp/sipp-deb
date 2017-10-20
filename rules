@@ -23,6 +23,9 @@ endif
 %:
 	dh $@
 
+override_dh_auto_build:
+	dh_auto_build --parallel
+
 override_dh_auto_configure:
 	dh_auto_configure -- \
 	        --with-gsl \
@@ -32,10 +35,9 @@ override_dh_auto_configure:
 	        --with-sctp
 
 override_dh_auto_test:
-	git clone https://github.com/google/googletest/ || ( cd googletest/; git pull --rebase )
-	test -d gtest && rmdir gtest
+	git clone https://github.com/google/googletest/ || ( cd googletest/ && git pull --rebase )
+	rmdir gtest gmock 2>/dev/null || true  # empty dirs in the distribution zip
 	test -h gtest || ln -s googletest/googletest gtest
-	test -d gmock && rmdir gmock
 	test -h gmock || ln -s googletest/googlemock gmock
-	dh_auto_test
-	./regress/runtests
+	dh_auto_test --parallel
+	for attempt in $$(seq 3); do ./regress/runtests && exit 0; done
