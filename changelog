@@ -1,3 +1,9 @@
+sipp (3.5.2-0osso1+deb9) stretch; urgency=low
+
+  * New 3.5.2 build for debian/stretch.
+
+ -- Walter Doekes <wjdoekes+sipp@osso.nl>  Thu, 19 Jul 2018 08:46:30 +0000
+
 sipp (3.5.1-0osso2+deb8u9) jessie; urgency=low
 
   * Build for debian/jessie 8.9.

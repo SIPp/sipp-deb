@@ -14,9 +14,9 @@ endif
 export PROC := $(shell dpkg-architecture -qDEB_BUILD_GNU_CPU)
 
 ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
-        BUILDFLAGS += OPTIMIZE=-O0
+  BUILDFLAGS += OPTIMIZE=-O0
 else
-        BUILDFLAGS += OPTIMIZE=-O2
+  BUILDFLAGS += OPTIMIZE=-O2
 endif
 #BUILDFLAGS += MAKECMDGOALS=dont-optimize
 
@@ -28,11 +28,11 @@ override_dh_auto_build:
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-	        --with-gsl \
-        	--with-openssl \
-	        --with-pcap \
-        	--with-rtpstream \
-	        --with-sctp
+	  --with-gsl \
+	  --with-openssl \
+	  --with-pcap \
+	  --with-rtpstream \
+	  --with-sctp
 
 override_dh_auto_test:
 	git clone https://github.com/google/googletest/ || ( cd googletest/ && git pull --rebase )
