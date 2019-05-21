@@ -1,0 +1,2 @@
+curses-gtest-conflict.patch
+skip-valgrind-test.patch

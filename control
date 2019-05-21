@@ -6,6 +6,7 @@ Uploaders: Mark Purcell <msp@debian.org>, ARAKI Yasuhiro <ar@debian.org>, Tzafri
 Build-Depends: debhelper (>= 7.0.50~),
  pkg-config,
  help2man,
+ procps,
  libgsl0-dev,
  libncurses5-dev,
  libpcap-dev,
