@@ -13,7 +13,7 @@ index 377f7dd..2d4a943 100644
 +
  #endif // __SCREEN_H__
 diff --git a/include/sipp.hpp b/include/sipp.hpp
-index 2eefe71..07442f5 100644
+index d65e935..e159df1 100644
 --- a/include/sipp.hpp
 +++ b/include/sipp.hpp
 @@ -55,9 +55,7 @@
@@ -28,12 +28,12 @@ index 2eefe71..07442f5 100644
  #endif
  
 diff --git a/src/screen.cpp b/src/screen.cpp
-index 758f4bd..30c2372 100644
+index 4df91da..15a84f1 100644
 --- a/src/screen.cpp
 +++ b/src/screen.cpp
-@@ -40,6 +40,10 @@
+@@ -42,6 +42,10 @@
  
- #include <unistd.h>
+ extern bool    timeout_exit;
  
 +/* Export these so others needn't include curses.h */
 +int key_backspace = KEY_BACKSPACE;
@@ -43,10 +43,10 @@ index 758f4bd..30c2372 100644
  int           screen_inited = 0;
  char          screen_exename[255];
 diff --git a/src/socket.cpp b/src/socket.cpp
-index 0f4aae5..755a8ce 100644
+index d69cc86..6bc08a4 100644
 --- a/src/socket.cpp
 +++ b/src/socket.cpp
-@@ -587,7 +587,7 @@ void handle_stdin_socket()
+@@ -586,7 +586,7 @@ void handle_stdin_socket()
                  printf(SIPP_ENDL);
              }
  #ifndef __SUNOS

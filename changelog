@@ -1,11 +1,11 @@
-sipp (3.6.0~rc1-0osso1+deb9) stretch; urgency=low
+sipp (3.5.3-0osso1+deb9) stretch; urgency=low
 
-  * New 3.6.0 build for debian/stretch.
+  * New 3.5.3 build for debian/stretch.
   * Patches:
     - curses-gtest-conflict.patch
     - skip-valgrind-test.patch
 
- -- Walter Doekes <wjdoekes+sipp@osso.nl>  Tue, 21 May 2019 16:27:48 +0200
+ -- Walter Doekes <wjdoekes+sipp@osso.nl>  Tue, 18 Jun 2019 22:40:42 +0200
 
 sipp (3.5.2-0osso1+deb9) stretch; urgency=low
 
