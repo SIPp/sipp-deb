@@ -20,6 +20,8 @@ else
 endif
 #BUILDFLAGS += MAKECMDGOALS=dont-optimize
 
+export TEST_SKIP_VALGRIND = 1
+
 %:
 	dh $@
 
