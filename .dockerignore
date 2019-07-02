@@ -1,5 +1,6 @@
 Dockerfile
 Dockerfile.build
+Dockerfile.buildmany
 Dockerfile.out
 .dockerignore
 .git

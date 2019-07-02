@@ -4,14 +4,6 @@ ARG oscodename=stretch
 FROM $osdistro:$oscodename
 LABEL maintainer="Walter Doekes <wjdoekes+sipp@osso.nl>"
 
-ARG osdistro=debian
-ARG osdistshort=deb
-ARG oscodename=stretch
-ARG upname=sipp
-ARG upversion=3.6.0
-ARG debepoch=
-ARG debversion=0osso1
-
 ENV DEBIAN_FRONTEND noninteractive
 
 # This time no "keeping the build small". We only use this container for
@@ -28,6 +20,15 @@ RUN apt-get dist-upgrade -y
 RUN apt-get install -y \
     bzip2 ca-certificates curl git \
     build-essential dh-autoreconf devscripts dpkg-dev equivs quilt
+
+# Get build env again, after the FROM, before the first usage
+ARG osdistro=debian
+ARG osdistshort=deb
+ARG oscodename=stretch
+ARG upname=sipp
+ARG upversion=3.6.0
+ARG debepoch=
+ARG debversion=0osso1
 
 # Copy debian dir, check version
 RUN mkdir -p /build/debian

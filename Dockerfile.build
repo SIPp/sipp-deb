@@ -1,14 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 cd "$(dirname "$0")"  # jump to curdir
 
 # Pass these on the command line.
-osdistro=debian
-osdistshort=deb
-oscodename=${3:-stretch}    # stretch/jessie
+oscodename=${1:-debian/stretch}  # debian/stretch
 upname=sipp
-upversion=${1:-3.6.0~rc1}   # sipp version, e.g. 3.6.0~rc1
-debversion=${2:-0osso1}     # deb build version, e.g. 0osso1
-echo "Usage: $0 3.6.0~rc1 0osso1 jessie" >&2
+upversion=${2:-3.6.0}       # sipp version
+debversion=${3:-0osso1}     # deb build version, e.g. 0osso1
+
+echo "Usage: $0 [debian/stretch [3.6.0 [0osso1]]]"
+echo ".. continuing"
+
+osdistro=${oscodename%/*}   # debian (or ubuntu)
+oscodename=${oscodename#*/} # stretch (or bionic)
+osdistshort=${osdistro:0:3} # deb (or ubu)
+case $osdistro/$oscodename in
+debian/stretch) oscodenum=9;;
+debian/jessie)  oscodenum=8;;
+debian/wheezy)  oscodenum=7;;
+ubuntu/bionic)  oscodenum=18.04;;
+ubuntu/xenial)  oscodenum=16.04;;
+ubuntu/trusty)  oscodenum=14.04;;
+*) oscodenum=0
+esac
+_shortver=$osdistshort$oscodenum
+
+# Update changelog
+sed -i -e "1s/+\\(deb\\|ubu\\)[0-9.]*) [a-z]\\+;/+$_shortver) $oscodename;/" \
+    changelog
 
 # Docker disallows certain tokens in versions.
 dockversion=$(echo build-${upname}-${upversion}-${debversion}-${oscodename} |
@@ -30,7 +48,7 @@ if ! docker build \
 then
     ret=$?
     echo "fail" >&2
-    exit $?
+    exit $ret
 fi
 
 # Copy files to ./Dockerfile.out
