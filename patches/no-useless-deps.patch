@@ -1,0 +1,19 @@
+Description: dpkg-shlibdeps: warning: package could avoid a useless
+  dependency if debian/sipp/usr/bin/sipp was not linked against
+  libgslcblas.so.0 (it uses none of the library's symbols)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c4257e..9c4fc37 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -156,8 +156,8 @@ if(RT_LIBRARY)
+ endif()
+ 
+ if(USE_GSL AND GSL_LIBRARY)
+-  target_link_libraries(sipp gsl gslcblas)
+-  target_link_libraries(sipp_unittest gsl gslcblas)
++  target_link_libraries(sipp gsl)
++  target_link_libraries(sipp_unittest gsl)
+ endif(USE_GSL AND GSL_LIBRARY)
+ 
+ if(USE_SSL)

@@ -1,3 +1,9 @@
+sipp (3.6.1-0osso1+deb10) buster; urgency=low
+
+  * New 3.6.1 build.
+
+ -- Walter Doekes <wjdoekes+sipp@osso.nl>  Mon, 21 Sep 2020 23:20:40 +0200
+
 sipp (3.6.0-0osso1+deb9) stretch; urgency=low
 
   * New 3.6.0 build for debian/stretch.

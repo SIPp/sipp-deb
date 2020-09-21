@@ -26,15 +26,16 @@ export TEST_SKIP_VALGRIND = 1
 	dh $@
 
 override_dh_auto_build:
+	# This fix should be in 3.6.2:
+	cp version.h include/
 	dh_auto_build --parallel
 
 override_dh_auto_configure:
 	dh_auto_configure -- \
-	  --with-gsl \
-	  --with-openssl \
-	  --with-pcap \
-	  --with-rtpstream \
-	  --with-sctp
+	  -DUSE_GSL=1 \
+	  -DUSE_PCAP=1 \
+	  -DUSE_SSL=1 \
+	  -DUSE_SCTP=1
 
 override_dh_auto_test:
 	git clone https://github.com/google/googletest/ || ( cd googletest/ && git pull --rebase )
@@ -42,4 +43,7 @@ override_dh_auto_test:
 	test -h gtest || ln -s googletest/googletest gtest
 	test -h gmock || ln -s googletest/googlemock gmock
 	dh_auto_test --parallel
-	for attempt in $$(seq 3); do ./regress/runtests && exit 0; done
+	for attempt in $$(seq 3); do \
+	    SIPP=$(shell pwd)/obj-$(DEB_BUILD_GNU_TYPE)/sipp ./regress/runtests && \
+	    exit 0; \
+	done

@@ -1,0 +1,968 @@
+Subject: v3.6.1-12-gd5f87ae
+
+diff --git a/CHANGES.md b/CHANGES.md
+index 9d478ec..cafbca6 100644
+--- a/CHANGES.md
++++ b/CHANGES.md
+@@ -1,12 +1,13 @@
+ BREAKING(!) changes in 3.6.1
+ ============================
+ 
+-* CMake is now used as build environment. autoconf and friends are gone.
+-  (#430, by Rob Day (@rkday).). See `build.sh` for CMake invocations.
++* CMake is now used as build environment: autoconf and friends are gone
++  (#430, by Rob Day (@rkday)). See `build.sh` for CMake invocations.
+   For a full build, do:
+-
++    ```
+     cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL=1 -DUSE_SCTP=1
+     make -j4
++    ```
+ 
+ 
+ Bugs fixed in 3.6.1
+@@ -27,7 +28,7 @@ Bugs fixed in 3.6.1
+ * Improve provided sipp.dtd file (#425, by David M. Lee (@leedm777)),
+   and XML fixes by Rob Day.
+ * Make it easier to deal with large SIP packets by adding an optional
+-  `CPPFLAGS=-DSIPP_MAX_MSG_SIZE=262144` flag (#422, by Cody Herzog
++  `-DSIPP_MAX_MSG_SIZE=262144` to the `cmake` command (#422, by Cody Herzog
+   (@codyherzog)).
+ 
+ 
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c4257e..9b7e28a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -11,11 +11,14 @@ if(EXISTS ./gmock/CMakeLists.txt)
+   add_subdirectory(gmock EXCLUDE_FROM_ALL)
+ endif()
+ 
++# Include binary dir first, where we add generated config.h and
++# version.h. If nothing is found there (release tar) use the version.h
++# from the source.
+ include_directories(
++  ${PROJECT_BINARY_DIR}
+   ${PROJECT_SOURCE_DIR}/include
+   ${PROJECT_SOURCE_DIR}/gtest/include
+   ${PROJECT_SOURCE_DIR}/gmock/include
+-  ${PROJECT_BINARY_DIR}
+   "/usr/local/include")
+ 
+ option(BUILD_STATIC "Build a statically-linked binary" OFF)
+@@ -29,6 +32,7 @@ file(GLOB all_SRCS
+   "${PROJECT_SOURCE_DIR}/src/*.c"
+   )
+ 
++include(${CMAKE_ROOT}/Modules/CheckCXXSourceCompiles.cmake)
+ include(${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
+ include(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
+ include(${CMAKE_ROOT}/Modules/CheckStructHasMember.cmake)
+@@ -40,6 +44,10 @@ CHECK_STRUCT_HAS_MEMBER("struct udphdr" uh_sport "sys/types.h;netinet/udp.h"  HA
+ 
+ CHECK_SYMBOL_EXISTS(le16toh "endian.h" HAVE_DECL_LE16TOH)
+ CHECK_SYMBOL_EXISTS(le16toh "sys/endian.h" HAVE_DECL_LE16TOH_BSD)
++CHECK_CXX_SOURCE_COMPILES("
++#include <string>
++int main() { std::to_string(1).c_str(); return 0; }
++" HAVE_STD_TOSTRING)
+ 
+ configure_file("${PROJECT_SOURCE_DIR}/include/config.h.in"
+                "${PROJECT_BINARY_DIR}/config.h" )
+@@ -104,8 +112,8 @@ add_custom_target(
+     version
+     if test -d .git \; then
+         ${CMAKE_COMMAND} -D SRC=${PROJECT_SOURCE_DIR}/include/version.h.in
+-          -D DST=${PROJECT_BINARY_DIR}/version.h
+-          -P ${PROJECT_SOURCE_DIR}/include/version.cmake \;
++        -D DST=${PROJECT_BINARY_DIR}/version.h
++        -P ${PROJECT_SOURCE_DIR}/include/version.cmake \;
+     fi
+ )
+ add_dependencies(sipp version)
+@@ -155,6 +163,14 @@ if(RT_LIBRARY)
+   target_link_libraries(sipp_unittest ${RT_LIBRARY})
+ endif()
+ 
++if(DEBUG)
++  add_definitions("-g -O0")
++endif(DEBUG)
++
++if(SIPP_MAX_MSG_SIZE)
++  add_definitions("-DSIPP_MAX_MSG_SIZE=${SIPP_MAX_MSG_SIZE}")
++endif(SIPP_MAX_MSG_SIZE)
++
+ if(USE_GSL AND GSL_LIBRARY)
+   target_link_libraries(sipp gsl gslcblas)
+   target_link_libraries(sipp_unittest gsl gslcblas)
+diff --git a/README.md b/README.md
+index a0001e9..3643932 100644
+--- a/README.md
++++ b/README.md
+@@ -8,7 +8,7 @@
+ </a>
+ 
+ SIPp - a SIP protocol test tool
+-Copyright (C) 2003-2019 - The Authors
++Copyright (C) 2003-2020 - The Authors
+ 
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by the
+@@ -26,7 +26,7 @@ with this program.  If not, see
+ 
+ # Documentation
+ 
+-See the `docs/` directory. Hopefully it is also available in html format at:
++See the `docs/` directory. It should also be available in html format at:
+ https://sipp.readthedocs.io/en/latest/
+ 
+ # Building
+@@ -41,7 +41,11 @@ cmake .
+ make
+ ```
+ 
+-There are several optional flags to enable features (SIP-over-TLS, SIP-over-SCTP, media playback from PCAP files and the GNU Statistical libbraries for random distributions):
++_The SIPp master branch (3.7.x) requires a modern C++11 compiler._
++
++There are several optional flags to enable features (SIP-over-TLS,
++SIP-over-SCTP, media playback from PCAP files and the GNU Statistical
++libbraries for random distributions):
+ 
+ ```
+ cmake . -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_PCAP=1 -DUSE_GSL=1
+@@ -49,9 +53,12 @@ cmake . -DUSE_SSL=1 -DUSE_SCTP=1 -DUSE_PCAP=1 -DUSE_GSL=1
+ 
+ ## Static builds
+ 
+-SIPp can be built into a single static binary, removing the need for libraries to exist on the target system and maximising portability.
++SIPp can be built into a single static binary, removing the need for
++libraries to exist on the target system and maximising portability.
+ 
+-This is a [fairly complicated process](https://medium.com/@neunhoef/static-binaries-for-a-c-application-f7c76f8041cf), and for now, it only works on Alpine Linux.
++This is a [fairly complicated
++process](https://medium.com/@neunhoef/static-binaries-for-a-c-application-f7c76f8041cf),
++and for now, it only works on Alpine Linux.
+ 
+ To build a static binary, pass `-DBUILD_STATIC=1` to cmake.
+ 
+@@ -66,9 +73,11 @@ list](https://lists.sourceforge.net/lists/listinfo/sipp-users).
+ * Update CHANGES.md. Tag release.
+ * Make `sipp.1` by calling `help2man --output=sipp.1 -v -v --no-info
+   --name='SIP testing tool and traffic generator' ./sipp`
+-* Copy `sipp.1`, copy `version.h`.
++* Copy `sipp.1`, copy `$bindir/version.h` to `include/version.h`.
+ * Create sipp-VERSION.tar.gz with subdirectory sipp-VERSION. Upload to github as "binary".
+-* Run `sudo docker build -t sipp-build docker && sudo docker run -it -v $PWD:/src sipp-build` to create a static binary. Upload this to Github as well.
++* Run `sudo docker build -t sipp-build docker && sudo docker run -it -v
++  $PWD:/src sipp-build` to create a static binary. Upload this to Github
++  as well.
+ 
+ # Contributing
+ 
+@@ -81,16 +90,16 @@ your changes integrate your changes. If you make changes in SIPp,
+   - Please stay conformant with the current indentation style (4 spaces
+     indent, standard Emacs-like indentation). Examples:
+ 
+-```
+-if (condition) {        /* "{" even if only one instruction */
+-    f();                /* 4 space indents */
+-} else {
+-    char* p = ptr;      /* C++-style pointer declaration placement */
+-    g(p);
+-}
+-```
++    ```
++    if (condition) {        /* "{" even if only one instruction */
++        f();                /* 4 space indents */
++    } else {
++        char* p = ptr;      /* C++-style pointer declaration placement */
++        g(p);
++    }
++    ```
+ 
+-  - If possible, check your changes can be compiled on:
++  - If possible, check that your changes can be compiled on:
+       - Linux,
+       - Cygwin,
+       - Mac OS X,
+diff --git a/build.sh b/build.sh
+index 56a25cb..26125db 100755
+--- a/build.sh
++++ b/build.sh
+@@ -23,6 +23,8 @@ elif test "$*" = "--common"; then
+ elif test "$*" = "--full"; then
+     cmake . -DUSE_GSL=1 -DUSE_PCAP=1 -DUSE_SSL=1 -DUSE_SCTP=1
+ else
++    # Debug build? Add -DDEBUG=1
++    # Adjusted SIP max size? Add -DSIPP_MAX_MSG_SIZE=262144
+     cmake . "$@"
+ fi
+ 
+@@ -32,4 +34,5 @@ if test -e gtest/.git; then
+ 	./sipp_unittest
+ fi
+ 
++# You want verbose or NOISY_BUILD? Use VERBOSE=1
+ "$MAKE" $MAKEFLAGS
+diff --git a/docs/.gitignore b/docs/.gitignore
+deleted file mode 100644
+index 06681a7..0000000
+--- a/docs/.gitignore
++++ /dev/null
+@@ -1,3 +0,0 @@
+-# sphinx build folder
+-_build
+-*.pyc
+diff --git a/include/auth.hpp b/include/auth.hpp
+index 12693d7..f4a0c8d 100644
+--- a/include/auth.hpp
++++ b/include/auth.hpp
+@@ -24,7 +24,8 @@ int createAuthHeader(const char *user,
+                      const char *aka_AMF,
+                      const char *aka_K,
+                      unsigned int nonce_count,
+-                     char *result);
++                     char *result,
++                     size_t result_len);
+ int verifyAuthHeader(const char *user, const char *password,
+                      const char *method, const char *auth,
+                      const char *msgbody);
+diff --git a/include/config.h.in b/include/config.h.in
+index 8c22504..cf39ea1 100644
+--- a/include/config.h.in
++++ b/include/config.h.in
+@@ -1,5 +1,5 @@
+ /*--------------------------------------------------------------------------
+- * This file is autogenerated from config.h.in 
++ * This file is autogenerated from include/config.h.in
+  * during the cmake configuration of your project. If you need to make changes
+  * edit the original file NOT THIS FILE.
+  * --------------------------------------------------------------------------*/
+@@ -18,5 +18,6 @@
+ #endif
+ #cmakedefine HAVE_IP_COMPAT_H @HAVE_IP_COMPAT_H@
+ #cmakedefine HAVE_UDP_UH_PREFIX @HAVE_UDP_UH_PREFIX@
++#cmakedefine HAVE_STD_TOSTRING @HAVE_STD_TOSTRING@
+ 
+ #endif
+diff --git a/include/screen.hpp b/include/screen.hpp
+index 13a9708..8f3d03d 100644
+--- a/include/screen.hpp
++++ b/include/screen.hpp
+@@ -43,10 +43,13 @@ void print_statistics(int last);
+ extern int key_backspace;
+ extern int key_dc;
+ 
++typedef std::vector<std::string> string_array;
++
+ class ScreenPrinter {
+ public:
+     ScreenPrinter():
+-        M_headless(!isatty(fileno(stdout)))
++        M_headless(!isatty(fileno(stdout))),
++        M_last(false)
+     {};
+     void redraw();
+     void print_closing_stats();
+@@ -63,9 +66,9 @@ private:
+     void draw_repartition_detailed(CStat::T_dynamicalRepartition * tabRepartition,
+                                  int sizeOfTab);
+ 
+-    std::vector<std::string> lines;
++    string_array lines;
+ 
+-    bool M_last = false;
++    bool M_last;
+ };
+ 
+ extern ScreenPrinter* sp;
+diff --git a/include/sipp.hpp b/include/sipp.hpp
+index 878c99f..621998a 100644
+--- a/include/sipp.hpp
++++ b/include/sipp.hpp
+@@ -83,6 +83,18 @@
+ #include "ratetask.hpp"
+ #include "watchdog.hpp"
+ 
++/* Backwards compatibility */
++#ifndef HAVE_STD_TOSTRING
++#include <sstream>
++namespace std {
++template <typename T> string to_string(T value) {
++    ostringstream os;
++    os << value;
++    return os.str();
++}
++}
++#endif
++
+ /*
+  * If this files is included in the Main, then extern definitions
+  * are removed, and the DEFVAL macro becomes '= value;'. Else
+@@ -233,7 +245,7 @@ MAYBE_EXTERN int                max_sched_loops         DEFVAL(MAX_SCHED_LOOPS_P
+ MAYBE_EXTERN unsigned int       global_t2               DEFVAL(DEFAULT_T2_TIMER_VALUE);
+ 
+ MAYBE_EXTERN char               local_ip[127];          /* also used for hostnames */
+-MAYBE_EXTERN char               local_ip_escaped[42];   /* with [brackets] in case of IPv6 */
++MAYBE_EXTERN char               local_ip_w_brackets[42]; /* with [brackets] in case of IPv6 */
+ MAYBE_EXTERN bool               local_ip_is_ipv6;
+ MAYBE_EXTERN int                local_port              DEFVAL(0);
+ #ifdef USE_SCTP
+@@ -264,7 +276,7 @@ MAYBE_EXTERN int                media_port              DEFVAL(0);
+ MAYBE_EXTERN size_t             media_bufsize           DEFVAL(2048);
+ MAYBE_EXTERN bool               media_ip_is_ipv6        DEFVAL(false);
+ MAYBE_EXTERN char               remote_ip[127];         /* also used for hostnames */
+-MAYBE_EXTERN char               remote_ip_escaped[42];  /* with [brackets] in case of IPv6 */
++MAYBE_EXTERN char               remote_ip_w_brackets[42]; /* with [brackets] in case of IPv6 */
+ MAYBE_EXTERN int                remote_port             DEFVAL(DEFAULT_PORT);
+ MAYBE_EXTERN unsigned int       pid                     DEFVAL(0);
+ MAYBE_EXTERN bool               print_all_responses     DEFVAL(false);
+diff --git a/include/stub-version.h b/include/version.h
+similarity index 100%
+rename from include/stub-version.h
+rename to include/version.h
+diff --git a/src/auth.cpp b/src/auth.cpp
+index 50048d5..2d9b41d 100644
+--- a/src/auth.cpp
++++ b/src/auth.cpp
+@@ -77,27 +77,17 @@ SQN sqn_he= {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+ /* end AKA */
+ 
+ 
+-int createAuthHeaderMD5(const char *user,
+-                        const char *password,
+-                        int password_len,
+-                        const char *method,
+-                        const char *uri,
+-                        const char *msgbody,
+-                        const char *auth,
+-                        const char *algo,
+-                        unsigned int nonce_count,
+-                        char *result);
+-int createAuthHeaderAKAv1MD5(const char *user,
+-                             const char *OP,
+-                             const char *AMF,
+-                             const char *K,
+-                             const char *method,
+-                             const char *uri,
+-                             const char *msgbody,
+-                             const char *auth,
+-                             const char *algo,
+-                             unsigned int nonce_count,
+-                             char * result);
++static int createAuthHeaderMD5(
++    const char* user, const char* password, int password_len,
++    const char* method, const char* uri, const char* msgbody,
++    const char* auth, const char* algo, unsigned int nonce_count,
++    char* result, size_t result_len);
++
++static int createAuthHeaderAKAv1MD5(
++    const char* user, const char* OP, const char* AMF, const char* K,
++    const char* method, const char* uri, const char* msgbody,
++    const char* auth, const char* algo, unsigned int nonce_count,
++    char* result, size_t result_len);
+ 
+ 
+ /* This function is from RFC 2617 Section 5 */
+@@ -152,20 +142,18 @@ static char *stristr(const char* s1, const char* s2)
+     return 0;
+ }
+ 
+-int createAuthHeader(const char *user, const char *password, const char *method,
+-                     const char *uri, const char *msgbody, const char *auth,
+-                     const char *aka_OP,
+-                     const char *aka_AMF,
+-                     const char *aka_K,
+-                     unsigned int nonce_count,
+-                     char *result)
++int createAuthHeader(
++    const char* user, const char* password, const char* method,
++    const char* uri, const char* msgbody, const char* auth,
++    const char* aka_OP, const char* aka_AMF, const char* aka_K,
++    unsigned int nonce_count, char* result, size_t result_len)
+ {
+ 
+-    char algo[32]="MD5";
++    char algo[32] = "MD5";
+     char *start, *end;
+ 
+     if ((start = stristr(auth, "Digest")) == NULL) {
+-        sprintf(result, "createAuthHeader: authentication must be digest");
++        snprintf(result, result_len, "createAuthHeader: authentication must be digest");
+         return 0;
+     }
+ 
+@@ -181,17 +169,19 @@ int createAuthHeader(const char *user, const char *password, const char *method,
+     }
+ 
+     if (strncasecmp(algo, "MD5", 3)==0) {
+-        return createAuthHeaderMD5(user, password, strlen(password), method,
+-                                   uri, msgbody, auth, algo, nonce_count, result);
++        return createAuthHeaderMD5(
++            user, password, strlen(password), method, uri, msgbody,
++            auth, algo, nonce_count, result, result_len);
+     } else if (strncasecmp(algo, "AKAv1-MD5", 9)==0) {
+         if (!aka_K) {
+-            sprintf(result, "createAuthHeader: AKAv1-MD5 authentication requires a key");
++            snprintf(result, result_len, "createAuthHeader: AKAv1-MD5 authentication requires a key");
+             return 0;
+         }
+-        return createAuthHeaderAKAv1MD5(user, aka_OP, aka_AMF, aka_K, method,
+-                                        uri, msgbody, auth, algo, nonce_count, result);
++        return createAuthHeaderAKAv1MD5(
++            user, aka_OP, aka_AMF, aka_K, method, uri, msgbody, auth,
++            algo, nonce_count, result, result_len);
+     } else {
+-        sprintf(result, "createAuthHeader: authentication must use MD5 or AKAv1-MD5");
++        snprintf(result, result_len, "createAuthHeader: authentication must use MD5 or AKAv1-MD5");
+         return 0;
+     }
+ 
+@@ -244,18 +234,12 @@ int getAuthParameter(const char *name, const char *header, char *result, int len
+     return end - start;
+ }
+ 
+-static int createAuthResponseMD5(const char* user,
+-                                 const char* password,
+-                                 int password_len,
+-                                 const char* method,
+-                                 const char* uri,
+-                                 const char* authtype,
+-                                 const char* msgbody,
+-                                 const char* realm,
+-                                 const char* nonce,
+-                                 const char* cnonce,
+-                                 const char* nc,
+-                                 unsigned char* result)
++static int createAuthResponseMD5(
++    const char* user, const char* password, int password_len,
++    const char* method, const char* uri, const char* authtype,
++    const char* msgbody, const char* realm, const char* nonce,
++    const char* cnonce, const char* nc,
++    unsigned char* result)
+ {
+     md5_byte_t ha1[MD5_HASH_SIZE], ha2[MD5_HASH_SIZE];
+     md5_byte_t resp[MD5_HASH_SIZE], body[MD5_HASH_SIZE];
+@@ -275,7 +259,7 @@ static int createAuthResponseMD5(const char* user,
+     hashToHex(&ha1[0], &ha1_hex[0]);
+ 
+     if (auth_uri) {
+-        sprintf(tmp, "sip:%s", auth_uri);
++        snprintf(tmp, sizeof(tmp), "sip:%s", auth_uri);
+     } else {
+         strncpy(tmp, uri, sizeof(tmp) - 1);
+     }
+@@ -319,22 +303,15 @@ static int createAuthResponseMD5(const char* user,
+     return 1;
+ }
+ 
+-int createAuthHeaderMD5(const char *user,
+-                        const char *password,
+-                        int password_len,
+-                        const char *method,
+-                        const char *uri,
+-                        const char *msgbody,
+-                        const char *auth,
+-                        const char *algo,
+-                        unsigned int nonce_count,
+-                        char *result)
++int createAuthHeaderMD5(
++    const char* user, const char* password, int password_len,
++    const char* method, const char* uri, const char* msgbody,
++    const char* auth, const char* algo, unsigned int nonce_count,
++    char* result, size_t result_len)
+ {
+ 
+     unsigned char resp_hex[HASH_HEX_SIZE+1];
+-    char tmp[MAX_HEADER_LEN],
+-        tmp2[MAX_HEADER_LEN],
+-        realm[MAX_HEADER_LEN],
++    char realm[MAX_HEADER_LEN],
+         sipuri[MAX_HEADER_LEN],
+         nonce[MAX_HEADER_LEN],
+         authtype[16],
+@@ -342,6 +319,7 @@ int createAuthHeaderMD5(const char *user,
+         nc[32],
+         opaque[64];
+     int has_opaque = 0;
++    int written = 0;
+ 
+     // Extract the Auth Type - If not present, using 'none'
+     cnonce[0] = '\0';
+@@ -363,17 +341,19 @@ int createAuthHeaderMD5(const char *user,
+ 
+     // Extract the Realm
+     if (!getAuthParameter("realm", auth, realm, sizeof(realm))) {
+-        sprintf(result, "createAuthHeaderMD5: couldn't parse realm in '%s'", auth);
++        snprintf(result, result_len, "createAuthHeaderMD5: couldn't parse realm in '%s'", auth);
+         return 0;
+     }
+ 
+-    sprintf(result, "Digest username=\"%s\",realm=\"%s\"", user, realm);
++    written += snprintf(
++        result + written, result_len - written,
++        "Digest username=\"%s\",realm=\"%s\"", user, realm);
+ 
+     // Construct the URI
+     if (auth_uri == NULL) {
+-        sprintf(sipuri, "sip:%s", uri);
++        snprintf(sipuri, sizeof(sipuri), "sip:%s", uri);
+     } else {
+-        sprintf(sipuri, "sip:%s", auth_uri);
++        snprintf(sipuri, sizeof(sipuri), "sip:%s", auth_uri);
+     }
+ 
+     if (cnonce[0] != '\0') {
+@@ -389,40 +369,32 @@ int createAuthHeaderMD5(const char *user,
+         // digest-cln = realm / domain / nonce / opaque / stale / algorithm
+         //                / qop-options / auth-param
+         // qop-options = "qop" EQUAL LDQUOT qop-value *("," qop-value) RDQUOT
+-        snprintf(tmp, sizeof(tmp), ",cnonce=\"%s\",nc=%s,qop=%s", cnonce, nc, authtype);
+-        strcat(result, tmp);
++        written += snprintf(
++            result + written, result_len - written,
++            ",cnonce=\"%s\",nc=%s,qop=%s", cnonce, nc, authtype);
+     }
+-    snprintf(tmp, sizeof(tmp), ",uri=\"%s\"", sipuri);
+-    strcat(result, tmp);
++    written += snprintf(
++        result + written, result_len - written, ",uri=\"%s\"", sipuri);
+ 
+     // Extract the Nonce
+     if (!getAuthParameter("nonce", auth, nonce, sizeof(nonce))) {
+-        sprintf(result, "createAuthHeader: couldn't parse nonce");
++        snprintf(result, result_len, "createAuthHeader: couldn't parse nonce");
+         return 0;
+     }
+ 
+-    createAuthResponseMD5(user,
+-                          password,
+-                          strlen(password),
+-                          method,
+-                          sipuri,
+-                          authtype,
+-                          msgbody,
+-                          realm,
+-                          nonce,
+-                          cnonce,
+-                          nc,
+-                          &resp_hex[0]);
+-
+-    snprintf(tmp2, sizeof(tmp2), ",nonce=\"%s\",response=\"%s\",algorithm=%s", nonce, resp_hex, algo);
+-    strcat(result, tmp2);
++    createAuthResponseMD5(
++        user, password, strlen(password), method, sipuri, authtype,
++        msgbody, realm, nonce, cnonce, nc, &resp_hex[0]);
+ 
++    written += snprintf(
++        result + written, result_len - written,
++        ",nonce=\"%s\",response=\"%s\",algorithm=%s", nonce, resp_hex, algo);
+     if (has_opaque) {
+-        snprintf(tmp2, sizeof(tmp2), ",opaque=\"%s\"", opaque);
+-        strcat(result, tmp2);
++        written += snprintf(
++            result + written, result_len - written, ",opaque=\"%s\"", opaque);
+     }
+ 
+-    return 1;
++    return written;
+ }
+ 
+ int verifyAuthHeader(const char *user, const char *password, const char *method, const char *auth, const char *msgbody)
+@@ -454,18 +426,9 @@ int verifyAuthHeader(const char *user, const char *password, const char *method,
+         getAuthParameter("cnonce", auth, cnonce, sizeof(cnonce));
+         getAuthParameter("nc", auth, nc, sizeof(nc));
+         getAuthParameter("qop", auth, authtype, sizeof(authtype));
+-        createAuthResponseMD5(user,
+-                              password,
+-                              strlen(password),
+-                              method,
+-                              uri,
+-                              authtype,
+-                              msgbody,
+-                              realm,
+-                              nonce,
+-                              cnonce,
+-                              nc,
+-                              result);
++        createAuthResponseMD5(
++            user, password, strlen(password), method, uri, authtype,
++            msgbody, realm, nonce, cnonce, nc, result);
+         getAuthParameter("response", auth, response, sizeof(response));
+         TRACE_CALLDEBUG("Processing verifyauth command - user %s, password %s, method %s, uri %s, realm %s, nonce %s, result expected %s, response from user %s\n",
+                 user,
+@@ -668,20 +631,21 @@ static char* base64_decode_string(const char* buf, unsigned int len, int* newlen
+     return out;
+ }
+ 
+-char base64[65]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++char base64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ 
+-char hexa[17]="0123456789abcdef";
+-int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+-                             const char *aka_AMF, const char *aka_K,
+-                             const char *method, const char *uri,
+-                             const char *msgbody, const char *auth,
+-                             const char *algo, unsigned int nonce_count,
+-                             char *result)
++char hexa[17] = "0123456789abcdef";
++
++static int createAuthHeaderAKAv1MD5(
++    const char* user, const char* aka_OP, const char* aka_AMF,
++    const char* aka_K, const char* method, const char* uri,
++    const char* msgbody, const char* auth, const char* algo,
++    unsigned int nonce_count, char* result, size_t result_len)
+ {
+ 
+     char tmp[MAX_HEADER_LEN];
+     char *start, *end;
+-    int has_auts = 0, resuf = 1;
++    int has_auts = 0;
++    int written = 0;
+     char *nonce64, *nonce;
+     int noncelen;
+     AMF amf;
+@@ -700,7 +664,7 @@ int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+ 
+     // Extract the Nonce
+     if ((start = stristr(auth, "nonce=")) == NULL) {
+-        sprintf(result, "createAuthHeaderAKAv1MD5: couldn't parse nonce");
++        snprintf(result, result_len, "createAuthHeaderAKAv1MD5: couldn't parse nonce");
+         return 0;
+     }
+     start = start + strlen("nonce=");
+@@ -715,10 +679,12 @@ int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+     nonce64 = tmp;
+     nonce = base64_decode_string(nonce64, end-start, &noncelen);
+     if (noncelen < RANDLEN + AUTNLEN) {
+-        sprintf(result, "createAuthHeaderAKAv1MD5 : Nonce is too short %d < %d expected \n",
+-                noncelen, RANDLEN + AUTNLEN);
+         if (nonce)
+             free(nonce);
++        snprintf(
++            result, result_len,
++            "createAuthHeaderAKAv1MD5 : Nonce is too short %d < %d expected\n",
++            noncelen, RANDLEN + AUTNLEN);
+         return 0;
+     }
+     memcpy(rnd, nonce, RANDLEN);
+@@ -740,7 +706,9 @@ int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+     f1(k, rnd, sqn, (unsigned char *) aka_AMF, xmac, op);
+     if (memcmp(mac, xmac, MACLEN) != 0) {
+         free(nonce);
+-        sprintf(result, "createAuthHeaderAKAv1MD5 : MAC != eXpectedMAC -> Server might not know the secret (man-in-the-middle attack?) \n");
++        snprintf(
++            result, result_len,
++            "createAuthHeaderAKAv1MD5 : MAC != expectedMAC -> Server might not know the secret (man-in-the-middle attack?)\n");
+         return 0;
+     }
+ 
+@@ -752,10 +720,14 @@ int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+         sqn_he[5] = sqn[5];
+         has_auts = 0;
+         /* RES has to be used as password to compute response */
+-        resuf = createAuthHeaderMD5(user, (char *) res, RESLEN, method, uri, msgbody, auth, algo, nonce_count, result);
+-        if (resuf == 0) {
+-            sprintf(result, "createAuthHeaderAKAv1MD5 : Unexpected return value from createAuthHeaderMD5\n");
++        written = createAuthHeaderMD5(
++            user, (const char *)res, RESLEN, method, uri, msgbody, auth,
++            algo, nonce_count, result, result_len);
++        if (written == 0) {
+             free(nonce);
++            snprintf(
++                result, result_len,
++                "createAuthHeaderAKAv1MD5 : Unexpected return value from createAuthHeaderMD5\n");
+             return 0;
+         }
+     } else {
+@@ -767,26 +739,30 @@ int createAuthHeaderAKAv1MD5(const char *user, const char *aka_OP,
+         has_auts = 1;
+         /* When re-synchronisation occurs an empty password has to be used */
+         /* to compute MD5 response (Cf. rfc 3310 section 3.2) */
+-        resuf = createAuthHeaderMD5(user, "", 0, method, uri, msgbody, auth, algo, nonce_count, result);
+-        if (resuf == 0) {
+-            sprintf(result, "createAuthHeaderAKAv1MD5 : Unexpected return value from createAuthHeaderMD5\n");
++        written = createAuthHeaderMD5(
++            user, "", 0, method, uri, msgbody, auth, algo, nonce_count,
++            result, result_len);
++        if (written == 0) {
+             free(nonce);
++            snprintf(
++                result, result_len,
++                "createAuthHeaderAKAv1MD5 : Unexpected return value from createAuthHeaderMD5\n");
+             return 0;
+         }
+     }
+     if (has_auts) {
+         /* Format data for output in the SIP message */
+-        for(i=0; i<AUTSLEN; i++) {
+-            auts_hex[2*i]=hexa[(auts_bin[i]&0xF0)>>4];
+-            auts_hex[2*i+1]=hexa[auts_bin[i]&0x0F];
++        for (i = 0; i < AUTSLEN; i++) {
++            auts_hex[2*i] = hexa[(auts_bin[i]&0xF0)>>4];
++            auts_hex[2*i+1] = hexa[auts_bin[i]&0x0F];
+         }
+-        auts_hex[AUTS64LEN-1]=0;
++        auts_hex[AUTS64LEN-1] = 0;
+ 
+-        sprintf(tmp, "%s,auts=\"%s\"", result, auts_hex);
+-        strcat(result, tmp);
++        written += snprintf(
++            result + written, result_len - written, ",auts=\"%s\"", auts_hex);
+     }
+     free(nonce);
+-    return 1;
++    return written;
+ }
+ 
+ 
+@@ -821,7 +797,7 @@ TEST(DigestAuth, BasicVerification) {
+                            " nonce=\"dcd98b7102dd2f0e8b11d0f600bfb0c093\"\r\n,"
+                            " opaque=\"5ccc069c403ebaf9f0171e9517f40e41\""));
+     char result[255];
+-    createAuthHeader("testuser", "secret", "REGISTER", "sip:example.com", "hello world", header, NULL, NULL, NULL, 1, result);
++    createAuthHeader("testuser", "secret", "REGISTER", "sip:example.com", "hello world", header, NULL, NULL, NULL, 1, result, 255);
+     EXPECT_STREQ("Digest username=\"testuser\",realm=\"testrealm@host.com\",uri=\"sip:sip:example.com\",nonce=\"dcd98b7102dd2f0e8b11d0f600bfb0c093\",response=\"db94e01e92f2b09a52a234eeca8b90f7\",algorithm=MD5,opaque=\"5ccc069c403ebaf9f0171e9517f40e41\"", result);
+     EXPECT_EQ(1, verifyAuthHeader("testuser", "secret", "REGISTER", result, "hello world"));
+     free(header);
+@@ -844,7 +820,8 @@ TEST(DigestAuth, qop) {
+                      NULL,
+                      NULL,
+                      1,
+-                     result);
++                     result,
++                     1024);
+     EXPECT_EQ(1, !!strstr(result, ",qop=auth-int,")); // no double quotes around qop-value
+     EXPECT_EQ(1, verifyAuthHeader("testuser", "secret", "REGISTER", result, "hello world"));
+     free(header);
+diff --git a/src/call.cpp b/src/call.cpp
+index 548cd3c..37233e5 100644
+--- a/src/call.cpp
++++ b/src/call.cpp
+@@ -646,7 +646,6 @@ call::~call()
+     }
+ #endif
+ 
+-
+     free(start_time_rtd);
+     free(rtd_done);
+     free(debugBuffer);
+@@ -681,22 +680,21 @@ void call::dump()
+ {
+     char s[MAX_HEADER_LEN];
+     char tmpbuf[MAX_HEADER_LEN];
+-    sprintf(s, "%s: State %d", id, msg_index);
++    int slen = sizeof(s);
++    int written;
++
++    written += snprintf(s, slen, "%s: State %d", id, msg_index);
+     if (next_retrans) {
+-        snprintf(tmpbuf, 64, "%s (next retrans %u)", s, next_retrans);
+-        strcat(s, tmpbuf);
++        written += snprintf(s, slen - written, " (next retrans %u)", next_retrans);
+     }
+     if (paused_until) {
+-        snprintf(tmpbuf, 64, "%s (paused until %u)", s, paused_until);
+-        strcat(s, tmpbuf);
++        written += snprintf(s, slen - written, " (paused until %u)", paused_until);
+     }
+     if (recv_timeout) {
+-        snprintf(tmpbuf, 64, "%s (recv timeout %u)", s, recv_timeout);
+-        strcat(s, tmpbuf);
++        written += snprintf(s, slen - written, " (recv timeout %u)", recv_timeout);
+     }
+     if (send_timeout) {
+-        snprintf(tmpbuf, 64, "%s (send timeout %u)", s, send_timeout);
+-        strcat(s, tmpbuf);
++        written += snprintf(s, slen - written, " (send timeout %u)", send_timeout);
+     }
+     WARNING("%s", s);
+ }
+@@ -1974,7 +1972,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
+             }
+             break;
+         case E_Message_Remote_IP:
+-            dest += snprintf(dest, left, "%s", remote_ip_escaped);
++            dest += snprintf(dest, left, "%s", remote_ip_w_brackets);
+             break;
+         case E_Message_Remote_Host:
+             dest += snprintf(dest, left, "%s", remote_host);
+@@ -1983,7 +1981,7 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
+             dest += snprintf(dest, left, "%d", remote_port + comp->offset);
+             break;
+         case E_Message_Local_IP:
+-            dest += snprintf(dest, left, "%s", local_ip_escaped);
++            dest += snprintf(dest, left, "%s", local_ip_w_brackets);
+             break;
+         case E_Message_Local_Port:
+             int port;
+@@ -2366,8 +2364,11 @@ char* call::createSendingMessage(SendingMessage *src, int P_index, char *msg_buf
+         createSendingMessage(auth_comp->comp_param.auth_param.aka_AMF, -2, my_aka_AMF, sizeof(my_aka_AMF));
+         createSendingMessage(auth_comp->comp_param.auth_param.aka_OP, -2, my_aka_OP, sizeof(my_aka_OP));
+ 
+-        if (createAuthHeader(my_auth_user, my_auth_pass, src->getMethod(), uri, auth_body, dialog_authentication,
+-                             my_aka_OP, my_aka_AMF, my_aka_K, next_nonce_count++, result + authlen) == 0) {
++        if (createAuthHeader(
++                my_auth_user, my_auth_pass, src->getMethod(), uri,
++                auth_body, dialog_authentication, my_aka_OP, my_aka_AMF,
++                my_aka_K, next_nonce_count++, result + authlen,
++                MAX_HEADER_LEN - authlen) == 0) {
+             ERROR("%s", result + authlen);
+         }
+         authlen = strlen(result);
+diff --git a/src/screen.cpp b/src/screen.cpp
+index bbf9cd2..33fe977 100644
+--- a/src/screen.cpp
++++ b/src/screen.cpp
+@@ -83,15 +83,15 @@ void print_statistics(int last)
+ void ScreenPrinter::print_closing_stats() {
+     M_last = true;
+     get_lines();
+-    for (auto line : lines) {
+-        printf("%s\n", line.c_str());
++    for (string_array::iterator it = lines.begin(); it != lines.end(); ++it) {
++        printf("%s\n", (*it).c_str());
+     }
+ 
+     if (currentScreenToDisplay != DISPLAY_STAT_SCREEN) {
+         currentScreenToDisplay = DISPLAY_STAT_SCREEN;
+         get_lines();
+-        for (auto line : lines) {
+-            printf("%s\n", line.c_str());
++        for (string_array::iterator it = lines.begin(); it != lines.end(); ++it) {
++            printf("%s\n", (*it).c_str());
+         }
+     }
+ 
+@@ -100,8 +100,8 @@ void ScreenPrinter::print_closing_stats() {
+ void ScreenPrinter::print_to_file(FILE* f)
+ {
+     get_lines();
+-    for (auto line : lines) {
+-        fprintf(f, "%s\n", line.c_str());
++    for (string_array::iterator it = lines.begin(); it != lines.end(); ++it) {
++        fprintf(f, "%s\n", (*it).c_str());
+     }
+ }
+ 
+@@ -114,8 +114,8 @@ void ScreenPrinter::redraw()
+     if (!M_headless) {
+         get_lines();
+         erase();
+-        for (auto line : lines) {
+-            printw("%s\n", line.c_str());
++        for (string_array::iterator it = lines.begin(); it != lines.end(); ++it) {
++            printw("%s\n", (*it).c_str());
+         }
+ 
+         if (command_mode) {
+@@ -269,7 +269,6 @@ void ScreenPrinter::draw_scenario_screen()
+     char buf[bufsiz];
+     char left_buf[40];
+     char right_buf[bufsiz];
+-    int divisor;
+     extern int pollnfds;
+ 
+     unsigned long long total_calls =
+@@ -287,7 +286,7 @@ void ScreenPrinter::draw_scenario_screen()
+             lines.push_back("  Users (length)   Port   Total-time  "
+                             "Total-calls  Remote-host");
+             snprintf(buf, bufsiz,
+-                     "  %d (%d ms)   %-5d %6lu.%02lu s     %8llu  %s:%d(%s)",
++                     "  %d (%d ms)   %-5d %6lu.%02lu s     %8llu  %.20s:%d(%s)",
+                      users, duration, local_port, clock_tick / 1000,
+                      (clock_tick % 1000) / 10, total_calls, remote_ip,
+                      remote_port, TRANSPORT_TO_STRING(transport));
+@@ -297,7 +296,7 @@ void ScreenPrinter::draw_scenario_screen()
+                             "Total-calls  Remote-host");
+             snprintf(
+                 buf, bufsiz,
+-                "  %3.1f(%d ms)/%5.3fs   %-5d %6lu.%02lu s     %8llu  %s:%d(%s)",
++                "  %3.1f(%d ms)/%5.3fs   %-5d %6lu.%02lu s     %8llu  %.20s:%d(%s)",
+                 rate, duration, (double)rate_period_ms / 1000.0, local_port,
+                 clock_tick / 1000, (clock_tick % 1000) / 10, total_calls,
+                 remote_ip, remote_port, TRANSPORT_TO_STRING(transport));
+@@ -321,7 +320,7 @@ void ScreenPrinter::draw_scenario_screen()
+     }
+     snprintf(right_buf, 40, "%lu ms scheduler resolution",
+              ms_since_last_tick / std::max(scheduling_loops, 1ul));
+-    snprintf(buf, bufsiz, "  %-38s  %-37s", left_buf, right_buf);
++    snprintf(buf, bufsiz, "  %-38.38s  %-37.37s", left_buf, right_buf);
+     lines.push_back(buf);
+ 
+     /* 2nd line */
+@@ -389,9 +388,6 @@ void ScreenPrinter::draw_scenario_screen()
+     /* if we have rtp stream thread running */
+     if (rtpstream_numthreads) {
+         unsigned long tempbytes;
+-        unsigned long last_tick = clock_tick;
+-        /* Saved clock_tick to last_tick and use that in calcs since clock tick */
+-        /* can change during calculations.                                      */
+         if (ms_since_last_tick) {
+             tempbytes = rtpstream_bytes_out;
+             /* Calculate integer and fraction parts of rtp bandwidth; this value
+diff --git a/src/sipp.cpp b/src/sipp.cpp
+index e4a7224..affb433 100644
+--- a/src/sipp.cpp
++++ b/src/sipp.cpp
+@@ -991,7 +991,7 @@ static void print_last_stats()
+ {
+     interrupt = 1;
+     if (sp) {
+-      sp->print_closing_stats();
++        sp->print_closing_stats();
+     }
+     if (main_scenario) {
+         stattask::report();
+@@ -1083,6 +1083,10 @@ void sipp_exit(int rc)
+     screen_exit();
+     print_last_stats();
+     print_errors();
++    if (sp) {
++        delete sp;
++        sp = NULL;
++    }
+ 
+     /* Close open files. */
+     struct logfile_info** logfile_ptr;
+diff --git a/src/socket.cpp b/src/socket.cpp
+index 9ed8a86..8c6d818 100644
+--- a/src/socket.cpp
++++ b/src/socket.cpp
+@@ -177,7 +177,7 @@ static void process_set(char* what)
+     } else if (!strcmp(what, "display")) {
+         if (!strcmp(rest, "main")) {
+             display_scenario = main_scenario;
+-        } else if (!strcmp(rest, "ooc")) {
++        } else if (!strcmp(rest, "ooc") && ooc_scenario) {
+             display_scenario = ooc_scenario;
+         } else {
+             WARNING("Unknown display scenario: %s", rest);
+@@ -2356,9 +2356,9 @@ int open_connections()
+             get_inet_address(&remote_sockaddr, remote_ip, sizeof(remote_ip));
+             family_hint = remote_sockaddr.ss_family;
+             if (remote_sockaddr.ss_family == AF_INET) {
+-                strcpy(remote_ip_escaped, remote_ip);
++                strcpy(remote_ip_w_brackets, remote_ip);
+             } else {
+-                sprintf(remote_ip_escaped, "[%s]", remote_ip);
++                sprintf(remote_ip_w_brackets, "[%.39s]", remote_ip);
+             }
+             fprintf(stderr, "Done.\n");
+         }
+@@ -2433,13 +2433,13 @@ int open_connections()
+         memcpy(&local_addr_storage, &local_sockaddr, sizeof(local_sockaddr));
+ 
+         if (local_sockaddr.ss_family == AF_INET) {
+-            strcpy(local_ip_escaped, local_ip);
++            strcpy(local_ip_w_brackets, local_ip);
+             if (!bind_specific) {
+                 _RCAST(struct sockaddr_in*, &local_sockaddr)->sin_addr.s_addr = INADDR_ANY;
+             }
+         } else {
+             local_ip_is_ipv6 = true;
+-            sprintf(local_ip_escaped, "[%s]", local_ip);
++            sprintf(local_ip_w_brackets, "[%.39s]", local_ip);
+             if (!bind_specific) {
+                 memcpy(&_RCAST(struct sockaddr_in6*, &local_sockaddr)->sin6_addr, &in6addr_any, sizeof(in6addr_any));
+             }

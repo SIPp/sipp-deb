@@ -1,0 +1,5 @@
+changes-since-3.6.1.patch
+
+# Don't do this. libgsl is not linked to gslcblass, so we won't be able
+# to link to libgsl without this.
+#no-useless-deps.patch

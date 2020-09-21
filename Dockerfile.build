@@ -4,19 +4,21 @@ cd "$(dirname "$0")"  # jump to curdir
 # Pass these on the command line.
 oscodename=${1:-debian/stretch}  # debian/stretch
 upname=sipp
-upversion=${2:-3.6.0}       # sipp version
+upversion=${2:-3.6.1}       # sipp version
 debversion=${3:-0osso1}     # deb build version, e.g. 0osso1
 
-echo "Usage: $0 [debian/stretch [3.6.0 [0osso1]]]"
+echo "Usage: $0 [debian/stretch [3.6.1 [0osso1]]]"
 echo ".. continuing"
 
 osdistro=${oscodename%/*}   # debian (or ubuntu)
 oscodename=${oscodename#*/} # stretch (or bionic)
 osdistshort=${osdistro:0:3} # deb (or ubu)
 case $osdistro/$oscodename in
+debian/buster)  oscodenum=10;;
 debian/stretch) oscodenum=9;;
 debian/jessie)  oscodenum=8;;
 debian/wheezy)  oscodenum=7;;
+ubuntu/focal)   oscodenum=20.04;;
 ubuntu/bionic)  oscodenum=18.04;;
 ubuntu/xenial)  oscodenum=16.04;;
 ubuntu/trusty)  oscodenum=14.04;;
@@ -46,9 +48,8 @@ if ! docker build \
     -f Dockerfile \
     .
 then
-    ret=$?
     echo "fail" >&2
-    exit $ret
+    exit 1
 fi
 
 # Copy files to ./Dockerfile.out

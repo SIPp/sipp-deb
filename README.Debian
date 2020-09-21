@@ -1,7 +1,12 @@
 Building SIPp for Debian and Ubuntu
 ===================================
 
-Steps::
+Docker build steps::
+
+    ./Dockerfile.build debian/buster
+    ls Dockerfile.out/buster
+
+Pre-docker steps::
 
     wget -O sipp_3.5.2.orig.tar.gz \
       https://github.com/SIPp/sipp/releases/download/v3.5.2/sipp-3.5.2.tar.gz
@@ -10,21 +15,9 @@ Steps::
     cd sipp-3.5.2
     git clone https://github.com/SIPp/sipp-deb debian
 
-Check out the appropriate debian build version by choosing a
-tag/branch/commit and/or *update the version in the changelog file*.
+    # Check out the appropriate debian build version by choosing a
+    # tag/branch/commit and/or *update the version in the changelog file*.
 
-Finally, build with::
+    # Finally, build with:
 
     DEB_BUILD_OPTIONS=parallel=12 dpkg-buildpackage -us -uc -sa
-
-
-
-Building SIPp on Ubuntu/Precise
--------------------------------
-
-Build the package without dpkg-source complaining about the .git
-directory here::
-
-    ( tmpdst=/tmp/deb-$(stat -c%i .);
-      mv debian/.git $tmpdst && dpkg-buildpackage -us -uc -sa;
-      ret=$?; mv $tmpdst debian/.git; exit $ret )

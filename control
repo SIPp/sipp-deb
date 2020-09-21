@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Debian VoIP Team <pkg-voip-maintainers@lists.alioth.debian.org>
 Uploaders: Mark Purcell <msp@debian.org>, ARAKI Yasuhiro <ar@debian.org>, Tzafrir Cohen <tzafrir@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
+ cmake,
  pkg-config,
  help2man,
  procps,
