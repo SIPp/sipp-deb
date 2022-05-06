@@ -47,13 +47,15 @@ RUN upversion_uscore=$(echo $upversion | sed -e 's/~/_/g') && \
     >/build/${upname}_${upversion}.orig.tar.gz
 RUN cd /build && tar zxf "${upname}_${upversion}.orig.tar.gz" && \
     mv debian "${upname}-${upversion}/"
-WORKDIR "/build/${upname}-${upversion}"
 
 # Apt-get prerequisites according to control file.
-COPY compat control debian/
-RUN mk-build-deps --install --remove --tool "apt-get -y" debian/control
+COPY compat control /build/${upname}-${upversion}/debian/
+RUN cd /tmp && \
+    mk-build-deps --install --remove --tool "apt-get -y" \
+      /build/${upname}-${upversion}/debian/control
 
 # Build!
+WORKDIR "/build/${upname}-${upversion}"
 COPY . debian
 RUN DEB_BUILD_OPTIONS=parallel=6 dpkg-buildpackage -us -uc -sa
 
